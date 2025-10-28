@@ -1,0 +1,53 @@
+name: Detect and Build Changed Directories
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  packages: write
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.changed-files.outputs.all_changed_files }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v47
+        with:
+          files: |
+            **/Dockerfile
+            **/versions.yaml
+          dir_names: true
+          dir_names_max_depth: 1
+          dir_names_exclude_current_dir: true
+          matrix: true
+
+      - name: List all changed directories
+        run: echo '${{ steps.changed-files.outputs.all_changed_files }}'
+
+  build:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.changed-dirs != '[]'
+    strategy:
+      matrix:
+        directory: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
+    uses: ./.github/workflows/build-image.yaml
+    with:
+      directory: ${{ matrix.directory }}
+    secrets: inherit
