@@ -8,4 +8,4 @@ postgres:
   # renovate: datasource=docker depName=postgres
   - "16.10"
   # renovate: datasource=docker depName=postgres
-  - "17.5"
+  - "17.6"
