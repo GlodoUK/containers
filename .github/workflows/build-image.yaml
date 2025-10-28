@@ -4,12 +4,19 @@ permissions:
   packages: write
 
 on:
+  workflow_dispatch:
+    inputs:
+      directory:
+        required: true
+        type: string
+        description: "Directory containing Dockerfile and versions.yaml"
+
   workflow_call:
     inputs:
       directory:
         required: true
         type: string
-        description: 'Directory containing Dockerfile and versions.yaml'
+        description: "Directory containing Dockerfile and versions.yaml"
 
 jobs:
   parse-versions:
