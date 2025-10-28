@@ -43,7 +43,7 @@ jobs:
 
   build:
     needs: detect-changes
-    if: needs.detect-changes.outputs.changed-dirs != '[]'
+    if: needs.detect-changes.outputs.matrix != '[]'
     strategy:
       matrix:
         directory: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
