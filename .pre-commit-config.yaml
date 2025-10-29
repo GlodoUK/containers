@@ -26,3 +26,8 @@ repos:
         language: node
         additional_dependencies:
           - "prettier@3.6.2"
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.2
+    hooks:
+      - id: ruff-check
+      - id: ruff-format

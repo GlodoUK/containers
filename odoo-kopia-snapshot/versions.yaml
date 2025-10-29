@@ -1,0 +1,14 @@
+postgres:
+  # renovate: datasource=docker depName=postgres
+  - "13.22"
+  # renovate: datasource=docker depName=postgres
+  - "14.19"
+  # renovate: datasource=docker depName=postgres
+  - "15.14"
+  # renovate: datasource=docker depName=postgres
+  - "16.10"
+  # renovate: datasource=docker depName=postgres
+  - "17.6"
+kopia:
+  # renovate: datasource=github-releases depName=kopia/kopia
+  - "0.21.1"
