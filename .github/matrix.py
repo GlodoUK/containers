@@ -18,6 +18,10 @@ import sys
 import json
 import itertools
 
+
+MAGIC_KEYS = ("version", "release")
+
+
 data = json.load(sys.stdin)
 
 keys = list(data.keys())
@@ -36,7 +40,7 @@ for combo in itertools.product(*versions):
         arg_name = f"{key.upper().replace('-', '_')}_VERSION"
         build_args.append(f"{arg_name}={version}")
         # XXX: Omit key prefix when there's only one key, or it's a magic "version" key, by convention
-        if omit_keys or key == "version":
+        if omit_keys or key in MAGIC_KEYS:
             tag_parts.append(version)
         else:
             tag_parts.append(f"{key}-{version}")
