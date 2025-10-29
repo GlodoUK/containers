@@ -27,26 +27,28 @@ omit_keys = len(keys) == 1
 
 matrix_items = []
 for combo in itertools.product(*versions):
-  build_args = []
-  tag_parts = []
-  version_dict = {}
+    build_args = []
+    tag_parts = []
+    version_dict = {}
 
-  for i, key in enumerate(keys):
-    version = combo[i]
-    arg_name = f"{key.upper().replace('-', '_')}_VERSION"
-    build_args.append(f"{arg_name}={version}")
-    # XXX: Omit key prefix when there's only one key, by convention
-    if omit_keys:
-      tag_parts.append(version)
-    else:
-      tag_parts.append(f"{key}-{version}")
-    version_dict[key] = version
+    for i, key in enumerate(keys):
+        version = combo[i]
+        arg_name = f"{key.upper().replace('-', '_')}_VERSION"
+        build_args.append(f"{arg_name}={version}")
+        # XXX: Omit key prefix when there's only one key, or it's a magic "version" key, by convention
+        if omit_keys or key == "version":
+            tag_parts.append(version)
+        else:
+            tag_parts.append(f"{key}-{version}")
+        version_dict[key] = version
 
-  matrix_items.append({
-    "build_args": "\n".join(build_args),
-    "tag": "-".join(tag_parts),
-    "versions": version_dict
-  })
+    matrix_items.append(
+        {
+            "build_args": "\n".join(build_args),
+            "tag": "-".join(tag_parts),
+            "versions": version_dict,
+        }
+    )
 
 result = {"include": matrix_items}
 print(json.dumps(result))
