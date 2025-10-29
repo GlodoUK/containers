@@ -21,3 +21,12 @@ Monitoring is assumed to be handled as part of your Kubernetes monitoring.
 ### Restore
 
 Not yet implemented.
+
+### Releasing
+
+- Remember to bump the `versions.yaml` dummy `v` tag
+
+## Building
+
+To build and run (shell) the Dockerfile locally:
+`docker run --rm -it "$(docker build -q . --build-arg POSTGRES_VERSION=17 --build-arg ALPINE_VERSION=3.22 --build-arg KOPIA_VERSION=0.17.0)" shell`

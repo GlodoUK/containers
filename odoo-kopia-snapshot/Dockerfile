@@ -14,25 +14,39 @@ RUN set -eux; \
   done && \
   strip ${PG_TOOLS_DIR}/bin/* || true
 
-# renovate: datasource=docker depName=alpine versioning=docker
-ARG ALPINE_VERSION=3.22
+FROM alpine:${ALPINE_VERSION}
 ARG KOPIA_VERSION=0.21.1
-
-FROM kopia/kopia:${KOPIA_VERSION}
 ENV KOPIA_CHECK_FOR_UPDATES=false
+
 # Copy the correct postgresql-client version from pg_builder
 COPY --from=pg_builder /extract/* /
-# Install Python
-RUN apk add --no-cache python3
+
+# Install Python, Kopia, etc.
+RUN apk add --no-cache \
+      ca-certificates \
+      curl \
+      bash \
+      nano \
+      tzdata \
+      python3 \
+      tar \
+    && curl -fsSL "https://github.com/kopia/kopia/releases/download/v${KOPIA_VERSION}/kopia-${KOPIA_VERSION}-linux-x64.tar.gz" \
+        | tar xzf - -C /usr/local/bin --strip-components 1 \
+    && rm -rf /tmp/*
+
 # Create app directory
 WORKDIR /app
+
 # Copy scripts
 COPY backup.py /app/backup.py
 COPY restore.py /app/restore.py
 COPY entrypoint.sh /app/entrypoint.sh
+
 # Make scripts executable
 RUN chmod +x /app/entrypoint.sh /app/backup.py /app/restore.py
+
 # Set entrypoint
 ENTRYPOINT ["/app/entrypoint.sh"]
+
 # Default to doing nothing (requires explicit command)
 CMD []
