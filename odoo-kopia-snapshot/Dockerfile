@@ -16,7 +16,7 @@ RUN set -eux; \
 
 # renovate: datasource=docker depName=alpine versioning=docker
 ARG ALPINE_VERSION=3.22
-ARG KOPIA_VERSION=0.21.1
+ARG KOPIA_VERSION=20251023.0.52914
 
 FROM kopia/kopia:${KOPIA_VERSION}
 ENV KOPIA_CHECK_FOR_UPDATES=false
