@@ -140,12 +140,16 @@ def main():
         type=Path,
     )
     kopia_group.add_argument(
-        "--kopia-cache-dir", default="/app/cache", help="Kopia cache directory"
+        "--kopia-cache-dir",
+        default="/tmp/kopia/cache",
+        help="Kopia cache directory",
+        type=Path,
     )
     kopia_group.add_argument(
         "--kopia-config-file",
-        default="/app/repository.config",
+        default="/tmp/kopia/repository.config",
         help="Kopia configuration file (ephemeral)",
+        type=Path,
     )
     kopia_group.add_argument(
         "--kopia-log-level",
@@ -166,9 +170,15 @@ def main():
     kopia_group.add_argument(
         "--kopia-compression", default="s2-default", help="Kopia compression algorithm"
     )
-
     parser.add_argument(
         "--no-kopia-maintenance", action="store_true", help="Skip Kopia maintenance run"
+    )
+    kopia_group.add_argument(
+        "--kopia-bin",
+        required=True,
+        type=Path,
+        default="/usr/local/bin/kopia",
+        help="Kopia binary path",
     )
 
     # Kopia retention policy arguments
@@ -215,8 +225,6 @@ def main():
             "KOPIA_PASSWORD environment variable not set. Using insecure default matching velero's old defaults..."
         )
 
-    kopia_path = "/bin/kopia"
-
     common_flags = [
         f"--config-file={args.kopia_config_file}",
         f"--log-level={args.kopia_log_level}",
@@ -232,7 +240,7 @@ def main():
         "Attempting to connect to Kopia repository (using ephemeral config)..."
     )
     connect_cmd = [
-        kopia_path,
+        args.kopia_bin,
         *common_flags,
         "repository",
         "connect",
@@ -245,7 +253,7 @@ def main():
             "Failed to connect to Kopia repository or repository not initialized. Attempting to create..."
         )
         create_cmd = [
-            kopia_path,
+            args.kopia_bin,
             *common_flags,
             "repository",
             "create",
@@ -259,7 +267,7 @@ def main():
     # Set policies
     _logger.info("Setting Kopia retention policies")
     policy_global_cmd = [
-        kopia_path,
+        args.kopia_bin,
         *common_flags,
         "policy",
         "set",
@@ -279,7 +287,7 @@ def main():
 
     # Set no compression for database backups (already compressed SQL)
     policy_db_cmd = [
-        kopia_path,
+        args.kopia_bin,
         *common_flags,
         "policy",
         "set",
@@ -293,7 +301,7 @@ def main():
         f"Kubernetes Snapshot {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     )
     snapshot_cmd = [
-        kopia_path,
+        args.kopia_bin,
         *common_flags,
         "snapshot",
         "create",
@@ -303,18 +311,24 @@ def main():
     run_command(snapshot_cmd)
 
     if not args.no_kopia_maintenance:
-        maintenance_cmd = [kopia_path, *common_flags, "maintenance", "run", "--full"]
+        maintenance_cmd = [
+            args.kopia_bin,
+            *common_flags,
+            "maintenance",
+            "run",
+            "--full",
+        ]
         run_command(maintenance_cmd)
     else:
         _logger.info("Skipping Kopia maintenance (--no-maintenance)")
 
     # Content stats
     _logger.info("Kopia content stats")
-    stats_cmd = [kopia_path, *common_flags, "content", "stats"]
+    stats_cmd = [args.kopia_bin, *common_flags, "content", "stats"]
     run_command(stats_cmd)
 
     _logger.info("Disconnecting from Kopia repository...")
-    disconnect_cmd = [kopia_path, *common_flags, "repository", "disconnect"]
+    disconnect_cmd = [args.kopia_bin, *common_flags, "repository", "disconnect"]
     run_command(disconnect_cmd)
 
     _logger.info("Kopia backup script (ephemeral config mode) finished successfully.")
