@@ -175,7 +175,6 @@ def main():
     )
     kopia_group.add_argument(
         "--kopia-bin",
-        required=True,
         type=Path,
         default="/usr/local/bin/kopia",
         help="Kopia binary path",
@@ -218,6 +217,8 @@ def main():
     Path(args.kopia_config_file).parent.mkdir(parents=True, exist_ok=True)
     Path(args.kopia_cache_dir).mkdir(parents=True, exist_ok=True)
 
+    kopia_bin = f"{args.kopia_bin}"
+
     # Check KOPIA_PASSWORD from environment
     if not os.environ.get("KOPIA_PASSWORD"):
         os.environ["KOPIA_PASSWORD"] = "static-passw0rd"
@@ -240,7 +241,7 @@ def main():
         "Attempting to connect to Kopia repository (using ephemeral config)..."
     )
     connect_cmd = [
-        args.kopia_bin,
+        kopia_bin,
         *common_flags,
         "repository",
         "connect",
@@ -253,7 +254,7 @@ def main():
             "Failed to connect to Kopia repository or repository not initialized. Attempting to create..."
         )
         create_cmd = [
-            args.kopia_bin,
+            kopia_bin,
             *common_flags,
             "repository",
             "create",
@@ -267,7 +268,7 @@ def main():
     # Set policies
     _logger.info("Setting Kopia retention policies")
     policy_global_cmd = [
-        args.kopia_bin,
+        kopia_bin,
         *common_flags,
         "policy",
         "set",
@@ -287,7 +288,7 @@ def main():
 
     # Set no compression for database backups (already compressed SQL)
     policy_db_cmd = [
-        args.kopia_bin,
+        kopia_bin,
         *common_flags,
         "policy",
         "set",
@@ -301,7 +302,7 @@ def main():
         f"Kubernetes Snapshot {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     )
     snapshot_cmd = [
-        args.kopia_bin,
+        kopia_bin,
         *common_flags,
         "snapshot",
         "create",
@@ -312,7 +313,7 @@ def main():
 
     if not args.no_kopia_maintenance:
         maintenance_cmd = [
-            args.kopia_bin,
+            kopia_bin,
             *common_flags,
             "maintenance",
             "run",
@@ -324,11 +325,11 @@ def main():
 
     # Content stats
     _logger.info("Kopia content stats")
-    stats_cmd = [args.kopia_bin, *common_flags, "content", "stats"]
+    stats_cmd = [kopia_bin, *common_flags, "content", "stats"]
     run_command(stats_cmd)
 
     _logger.info("Disconnecting from Kopia repository...")
-    disconnect_cmd = [args.kopia_bin, *common_flags, "repository", "disconnect"]
+    disconnect_cmd = [kopia_bin, *common_flags, "repository", "disconnect"]
     run_command(disconnect_cmd)
 
     _logger.info("Kopia backup script (ephemeral config mode) finished successfully.")
