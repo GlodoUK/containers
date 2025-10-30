@@ -36,12 +36,12 @@ def run_command(cmd, check=True, capture_output=False, text=True):
         raise
 
 
-def run_postgres_backup(args):
+def run_postgres_backup(args) -> Path:
     postgres_backup_directory = args.postgres_backup_dir.resolve()
     postgres_backup_directory.mkdir(parents=True, exist_ok=True)
 
     # Check database backup directory is inside the kopia backup
-    if not postgres_backup_directory.is_relative_to(args.kopia_backup_source.resolve()):
+    if not postgres_backup_directory.is_relative_to(args.odoo_dir.resolve()):
         _logger.critical(
             "Postgres backup directory is not inside the backup source."
             " This is an unsupported configuration."
@@ -100,6 +100,7 @@ def run_postgres_backup(args):
             os.environ.get("PGDATABASE"),
         ],
     )
+    return postgres_backup_file
 
 
 def main():
@@ -125,6 +126,26 @@ def main():
         help="Emphermal storage to place backup. It *must* be within the Kopia directory",
         type=Path,
     )
+    pg_group.add_argument(
+        "--postgres-backup-cleanup",
+        action="store_true",
+        default=True,
+        help="Enable PostgreSQL backup cleanup",
+    )
+    pg_group.add_argument(
+        "--no-postgres-backup-cleanup",
+        action="store_true",
+        help="Disable PostgreSQL backup cleanup",
+    )
+
+    # Odoo arguments
+    odoo_group = parser.add_argument_group("Odoo options")
+    odoo_group.add_argument(
+        "--odoo-dir",
+        default=Path("/var/lib/odoo"),
+        help="Source path to backup - should contain filestore, sessions, etc.",
+        type=Path,
+    )
 
     # Kopia arguments
     kopia_group = parser.add_argument_group("Kopia options")
@@ -132,12 +153,6 @@ def main():
         "--kopia-repo-connect-params",
         required=True,
         help='Kopia repository connection parameters (e.g., "azure --container=kopia --prefix=ns/")',
-    )
-    kopia_group.add_argument(
-        "--kopia-backup-source",
-        default=Path("/var/lib/odoo"),
-        help="Source path to backup",
-        type=Path,
     )
     kopia_group.add_argument(
         "--kopia-cache-dir",
@@ -156,6 +171,12 @@ def main():
         default="info",
         choices=["error", "warning", "info", "debug"],
         help="Kopia log level",
+    )
+    kopia_group.add_argument(
+        "--kopia-log-dir",
+        default="/tmp/kopia/logs",
+        help="Kopia log level",
+        type=Path,
     )
     kopia_group.add_argument(
         "--kopia-hostname",
@@ -210,12 +231,17 @@ def main():
     if args.no_postgres_backup:
         args.postgres_backup = False
 
+    if args.no_postgres_backup_cleanup:
+        args.postgres_backup_cleanup = False
+
+    postgres_dump_to_remove = False
     if args.postgres_backup:
-        run_postgres_backup(args)
+        postgres_dump_to_remove = run_postgres_backup(args)
 
     # Ensure directories exist
     Path(args.kopia_config_file).parent.mkdir(parents=True, exist_ok=True)
     Path(args.kopia_cache_dir).mkdir(parents=True, exist_ok=True)
+    Path(args.kopia_log_dir).mkdir(parents=True, exist_ok=True)
 
     kopia_bin = f"{args.kopia_bin}"
 
@@ -229,6 +255,8 @@ def main():
     common_flags = [
         f"--config-file={args.kopia_config_file}",
         f"--log-level={args.kopia_log_level}",
+        f"--log-dir={args.kopia_log_dir}",
+        f"--file-log-level={args.kopia_log_level}",
         "--no-progress",
     ]
 
@@ -245,8 +273,8 @@ def main():
         *common_flags,
         "repository",
         "connect",
-        *args.kopia_repo_connect_params.split(),
         f"--cache-directory={args.kopia_cache_dir}",
+        *args.kopia_repo_connect_params.split(),
         *overrides,
     ]
     if not run_command(connect_cmd, check=False):
@@ -258,9 +286,9 @@ def main():
             *common_flags,
             "repository",
             "create",
+            f"--cache-directory={args.kopia_cache_dir}",
             *args.kopia_repo_connect_params.split(),
             *overrides,
-            f"--cache-directory={args.kopia_cache_dir}",
             "--description=Kopia repository for Kubernetes CronJob (ephemeral config)",
         ]
         run_command(create_cmd)
@@ -281,7 +309,7 @@ def main():
         f"--keep-monthly={args.keep_monthly}",
         f"--keep-annual={args.keep_annual}",
         "--add-ignore=/sessions/*",
-        f"--add-ignore={args.kopia_backup_source / 'sessions' / '*'}",
+        f"--add-ignore={args.odoo_dir / 'sessions' / '*'}",
         "--ignore-file-errors=true",
     ]
     run_command(policy_global_cmd)
@@ -293,11 +321,11 @@ def main():
         "policy",
         "set",
         "--compression=none",
-        args.db_backup_dir,
+        f"{args.postgres_backup_dir.resolve()}",
     ]
     run_command(policy_db_cmd)
 
-    _logger.info(f"Creating snapshot for source: {args.kopia_backup_source}...")
+    _logger.info(f"Creating snapshot for source: {args.odoo_dir}...")
     snapshot_desc = (
         f"Kubernetes Snapshot {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     )
@@ -306,7 +334,7 @@ def main():
         *common_flags,
         "snapshot",
         "create",
-        args.kopia_backup_source,
+        f"{args.odoo_dir}",
         f"--description={snapshot_desc}",
     ]
     run_command(snapshot_cmd)
@@ -332,7 +360,16 @@ def main():
     disconnect_cmd = [kopia_bin, *common_flags, "repository", "disconnect"]
     run_command(disconnect_cmd)
 
-    _logger.info("Kopia backup script (ephemeral config mode) finished successfully.")
+    if (
+        args.postgres_backup_cleanup
+        and postgres_dump_to_remove
+        and postgres_dump_to_remove.is_file()
+    ):
+        _logger.info(f"Cleanup of postgres dump file {postgres_dump_to_remove}")
+        postgres_dump_to_remove.unlink()
+
+    _logger.info("Backup finished successfully.")
+
     sys.exit(0)
 
 
