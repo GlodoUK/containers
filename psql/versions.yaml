@@ -1,11 +1,11 @@
 postgres:
   # renovate: datasource=docker depName=postgres
-  - "13.22"
+  - "13.23"
   # renovate: datasource=docker depName=postgres
-  - "14.19"
+  - "14.20"
   # renovate: datasource=docker depName=postgres
-  - "15.14"
+  - "15.15"
   # renovate: datasource=docker depName=postgres
-  - "16.10"
+  - "16.11"
   # renovate: datasource=docker depName=postgres
-  - "17.6"
+  - "17.7"
