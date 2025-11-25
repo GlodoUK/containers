@@ -14,4 +14,4 @@ postgres:
   - "17.7"
 kopia:
   # renovate: datasource=github-releases depName=kopia/kopia
-  - "0.22.0"
+  - "0.22.1"
