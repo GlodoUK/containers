@@ -1,5 +1,5 @@
 # renovate: datasource=docker depName=alpine versioning=docker
-ARG ALPINE_VERSION=3.22
+ARG ALPINE_VERSION=3.23
 
 FROM alpine:${ALPINE_VERSION}
 ARG KUBECTL_VERSION=v1.34.1
