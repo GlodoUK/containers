@@ -1,6 +1,6 @@
 # Dummy version to version the script
 release:
-  - "2.0.0"
+  - "2.0.1"
 postgres:
   # renovate: datasource=docker depName=postgres
   - "13.23"

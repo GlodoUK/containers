@@ -17,6 +17,24 @@ logging.basicConfig(
 _logger = logging.getLogger(__name__)
 
 
+def create_sha256_file(target_file):
+    checksum_file = f"{target_file}.sha256"
+    try:
+        result = subprocess.run(
+            ["sha256sum", target_file],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True,
+        )
+        with open(checksum_file, "w") as f:
+            f.write(result.stdout)
+    except subprocess.CalledProcessError as e:
+        _logger.critical(f"Error calculating checksum: {e.stderr}")
+    except FileNotFoundError:
+        _logger.critical("The 'sha256sum' command was not found...")
+
+
 def run_command(cmd, check=True, capture_output=False, text=True):
     """Run a shell command and return the result."""
     try:
@@ -100,6 +118,7 @@ def run_postgres_backup(args) -> Path:
             os.environ.get("PGDATABASE"),
         ],
     )
+    create_sha256_file(postgres_backup_file)
     return postgres_backup_file
 
 
