@@ -41,7 +41,32 @@ CREATE TABLE IF NOT EXISTS stock_rapid_quant (
         FOREIGN KEY (warehouse_id) REFERENCES stock_warehouse(id)
 );
 SQL
-SINK_STMT="INSERT INTO stock_rapid_quant (product_id, warehouse_id, quantity, reserved, incoming, outgoing, buildable, free_immediately, virtual_available, write_date) VALUES ({product_id}, {warehouse_id}, {quantity}, {reserved}, {incoming}, {outgoing}, {buildable}, {free_immediately}, {virtual_available}, NOW()) ON CONFLICT (product_id, warehouse_id) DO UPDATE SET quantity = EXCLUDED.quantity, reserved = EXCLUDED.reserved, incoming = EXCLUDED.incoming, outgoing = EXCLUDED.outgoing, buildable = EXCLUDED.buildable, free_immediately = EXCLUDED.free_immediately, virtual_available = EXCLUDED.virtual_available, write_date = NOW()"
+SINK_STMT="INSERT INTO stock_rapid_quant (
+  product_id, warehouse_id, quantity, reserved, incoming, outgoing, buildable,
+  free_immediately, virtual_available, write_date
+)
+VALUES (
+  {product_id}, {warehouse_id}, {quantity}, {reserved}, {incoming}, {outgoing}, {buildable},
+  {free_immediately}, {virtual_available}, NOW()
+)
+ON CONFLICT (product_id, warehouse_id)
+DO UPDATE SET
+    quantity = EXCLUDED.quantity,
+    reserved = EXCLUDED.reserved,
+    incoming = EXCLUDED.incoming,
+    outgoing = EXCLUDED.outgoing,
+    buildable = EXCLUDED.buildable,
+    free_immediately = EXCLUDED.free_immediately,
+    virtual_available = EXCLUDED.virtual_available,
+    write_date = NOW()
+WHERE
+    stock_rapid_quant.quantity IS DISTINCT FROM EXCLUDED.quantity OR
+    stock_rapid_quant.reserved IS DISTINCT FROM EXCLUDED.reserved OR
+    stock_rapid_quant.incoming IS DISTINCT FROM EXCLUDED.incoming OR
+    stock_rapid_quant.outgoing IS DISTINCT FROM EXCLUDED.outgoing OR
+    stock_rapid_quant.buildable IS DISTINCT FROM EXCLUDED.buildable OR
+    stock_rapid_quant.free_immediately IS DISTINCT FROM EXCLUDED.free_immediately OR
+    stock_rapid_quant.virtual_available IS DISTINCT FROM EXCLUDED.virtual_available"
 # Process each warehouse
 for warehouse_id in $WAREHOUSE_IDS; do
   echo "[$(date -Iseconds)] Processing warehouse $warehouse_id..."

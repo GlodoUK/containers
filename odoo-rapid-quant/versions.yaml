@@ -1,3 +1,4 @@
+__suffix: "script-0.1.1"
 rq:
   # renovate: datasource=github-releases depName=GlodoUK/odoo-rapid-quant
   - "v0.1.0"

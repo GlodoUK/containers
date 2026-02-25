@@ -24,6 +24,13 @@ MAGIC_KEYS = ("version", "release")
 
 data = json.load(sys.stdin)
 
+# Look for a magic __suffix key, which is assumed to be a simple string
+# This is an alternative to the 'release' magic key, intended to mimic a debian-style
+# patch suffix
+suffix = data.pop("__suffix", False)
+if not isinstance(suffix, str):
+    suffix = False
+
 keys = list(data.keys())
 versions = [data[key] for key in keys]
 output = []
@@ -46,10 +53,13 @@ for combo in itertools.product(*versions):
             tag_parts.append(f"{key}-{version}")
         version_dict[key] = version
 
+    tag = "-".join(tag_parts)
+    if suffix:
+        tag = f"{tag}+{suffix}"
     matrix_items.append(
         {
             "build_args": "\n".join(build_args),
-            "tag": "-".join(tag_parts),
+            "tag": tag,
             "versions": version_dict,
         }
     )
