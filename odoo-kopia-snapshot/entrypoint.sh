@@ -25,6 +25,16 @@ case "$COMMAND" in
     exec python3 /app/list.py "$@"
     ;;
 
+  generate-backup-cronjob)
+    shift
+    exec python3 /app/generate_backup_cronjob.py "$@"
+    ;;
+
+  generate-restore-job)
+    shift
+    exec python3 /app/generate_restore_job.py "$@"
+    ;;
+
   shell|sh|bash)
     echo "Starting interactive shell..."
     exec /bin/bash
@@ -32,10 +42,12 @@ case "$COMMAND" in
 
   "")
     echo "No command specified. Available commands:"
-    echo "  backup  - Run backup operation"
-    echo "  restore - Run restore operation"
-    echo "  list    - List available snapshots"
-    echo "  shell   - Start interactive shell"
+    echo "  backup                   - Run backup operation"
+    echo "  restore                  - Run restore operation"
+    echo "  list                     - List available snapshots"
+    echo "  generate-backup-cronjob  - Generate a Kubernetes CronJob YAML for backups"
+    echo "  generate-restore-job     - Generate a Kubernetes Job YAML for restore"
+    echo "  shell                    - Start interactive shell"
     echo ""
     echo "Example: docker run odoo-kopia-backup backup --pghost=db"
     exit 0

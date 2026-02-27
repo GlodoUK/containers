@@ -29,6 +29,7 @@ RUN apk add --no-cache \
       nano \
       tzdata \
       python3 \
+      py3-yaml \
       tar \
     && curl -fsSL "https://github.com/kopia/kopia/releases/download/v${KOPIA_VERSION}/kopia-${KOPIA_VERSION}-linux-x64.tar.gz" \
         | tar xzf - -C /usr/local/bin --strip-components 1 \
@@ -41,10 +42,14 @@ WORKDIR /app
 COPY backup.py /app/backup.py
 COPY restore.py /app/restore.py
 COPY list.py /app/list.py
+COPY kube.py /app/kube.py
+COPY generate_backup_cronjob.py /app/generate_backup_cronjob.py
+COPY generate_restore_job.py /app/generate_restore_job.py
 COPY entrypoint.sh /app/entrypoint.sh
 
 # Make scripts executable
-RUN chmod +x /app/entrypoint.sh /app/backup.py /app/restore.py /app/list.py
+RUN chmod +x /app/entrypoint.sh /app/backup.py /app/restore.py /app/list.py \
+    /app/generate_backup_cronjob.py /app/generate_restore_job.py
 
 # Set entrypoint
 ENTRYPOINT ["/app/entrypoint.sh"]
