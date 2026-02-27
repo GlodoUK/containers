@@ -6,31 +6,10 @@ import logging
 import sys
 from pathlib import Path
 
+from .utils import setup_logging, run_command
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+setup_logging()
 _logger = logging.getLogger(__name__)
-
-
-def run_command(cmd, check=True, capture_output=False, text=True):
-    """Run a shell command and return the result."""
-    try:
-        result = subprocess.run(
-            cmd, check=check, capture_output=capture_output, text=text
-        )
-        return result
-    except subprocess.CalledProcessError as e:
-        if check:
-            _logger.error(f"Command failed: {' '.join(cmd)}")
-            _logger.error(f"Error: {e.stderr if capture_output else str(e)}")
-            raise
-        return e
-    except Exception as e:
-        _logger.error(f"An error occurred while running command {' '.join(cmd)}: {e}")
-        raise
 
 
 def main():
@@ -158,9 +137,7 @@ def main():
         *overrides,
     ]
     result = run_command(connect_cmd, check=False)
-    if (
-        isinstance(result, subprocess.CompletedProcess) and result.returncode != 0
-    ) or isinstance(result, subprocess.CalledProcessError):
+    if result.returncode != 0:
         _logger.critical("Failed to connect to Kopia repository. Aborting.")
         sys.exit(1)
 

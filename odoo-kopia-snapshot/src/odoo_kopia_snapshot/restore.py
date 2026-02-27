@@ -8,31 +8,10 @@ import shlex
 import sys
 from pathlib import Path
 
+from .utils import setup_logging, run_command, verify_checksum
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+setup_logging()
 _logger = logging.getLogger(__name__)
-
-
-def run_command(cmd, check=True, capture_output=False, text=True):
-    """Run a shell command and return the result."""
-    try:
-        result = subprocess.run(
-            cmd, check=check, capture_output=capture_output, text=text
-        )
-        return result.returncode == 0
-    except subprocess.CalledProcessError as e:
-        if check:
-            _logger.error(f"Command failed: {' '.join(cmd)}")
-            _logger.error(f"Error: {e.stderr if capture_output else str(e)}")
-            raise
-        return False
-    except Exception as e:
-        _logger.error(f"An error occurred while running command {' '.join(cmd)}: {e}")
-        raise
 
 
 def detect_source_database(backup_dir: Path) -> str:
@@ -48,27 +27,6 @@ def detect_source_database(backup_dir: Path) -> str:
         )
         sys.exit(1)
     return dump_files[0].stem
-
-
-def verify_checksum(dump_file: Path):
-    """Verify SHA256 checksum of the dump file."""
-    checksum_file = Path(f"{dump_file}.sha256")
-    if not checksum_file.exists():
-        _logger.warning(
-            f"No checksum file found at {checksum_file}, skipping verification"
-        )
-        return
-    _logger.info(f"Verifying checksum of {dump_file}...")
-    try:
-        subprocess.run(
-            ["sha256sum", "-c", str(checksum_file)],
-            check=True,
-            cwd=dump_file.parent,
-        )
-        _logger.info("Checksum verification passed")
-    except subprocess.CalledProcessError:
-        _logger.critical("Checksum verification FAILED — dump file may be corrupt")
-        sys.exit(1)
 
 
 def main():
@@ -127,6 +85,20 @@ def main():
         "--no-postgres-backup-cleanup",
         action="store_true",
         help="Keep dump file after restore",
+    )
+
+    # Download-only mode
+    parser.add_argument(
+        "--download-only",
+        action="store_true",
+        default=False,
+        help="Download snapshot data to disk without restoring (skips pg_restore and cleanup)",
+    )
+    parser.add_argument(
+        "--download-path",
+        type=Path,
+        default=None,
+        help="Directory to download snapshot artifacts into (required with --download-only)",
     )
 
     # Filestore arguments
@@ -206,17 +178,24 @@ def main():
         args.postgres_backup_cleanup = False
     if args.no_filestore_restore:
         args.filestore_restore = False
+    if args.download_only:
+        args.postgres_backup_cleanup = False
+        if not args.download_path:
+            parser.error("--download-path is required when using --download-only")
+        # Override restore paths to point at the download directory
+        args.postgres_backup_dir = args.download_path
+        args.odoo_dir = args.download_path
 
     # Resolve target database
     target_database = args.target_database or os.environ.get("PGDATABASE")
 
-    if args.postgres_restore and not target_database:
+    if args.postgres_restore and not args.download_only and not target_database:
         _logger.critical(
             "No target database specified. Use --target-database or set PGDATABASE."
         )
         sys.exit(1)
 
-    if args.postgres_restore:
+    if args.postgres_restore and not args.download_only:
         REQUIRED_PG_ENVIRON = ["PGHOST", "PGPORT", "PGUSER", "PGPASSWORD"]
         if not all(os.environ.get(key) for key in REQUIRED_PG_ENVIRON):
             _logger.critical(
@@ -265,8 +244,9 @@ def main():
         f"--cache-directory={args.kopia_cache_dir}",
         *args.kopia_repo_connect_params.split(),
         *overrides,
+        "--readonly",
     ]
-    if not run_command(connect_cmd, check=False):
+    if run_command(connect_cmd, check=False).returncode != 0:
         _logger.critical("Failed to connect to Kopia repository. Aborting.")
         sys.exit(1)
 
@@ -302,45 +282,49 @@ def main():
         # Verify checksum
         verify_checksum(dump_file)
 
-        # Wait for PostgreSQL
-        _logger.info("Checking PostgreSQL is ready...")
-        pg_isready = False
-        for i in range(1, 10):
-            try:
-                pg_isready = run_command(["pg_isready"])
-                if pg_isready:
-                    break
-            except subprocess.CalledProcessError:
-                _logger.info(
-                    f"PostgreSQL is not ready.. attempt {i}. Retrying in {i} seconds..."
-                )
-                time.sleep(i)
-            except Exception:
-                raise
+        if not args.download_only:
+            # Wait for PostgreSQL
+            _logger.info("Checking PostgreSQL is ready...")
+            pg_isready = False
+            for i in range(1, 10):
+                try:
+                    result = run_command(["pg_isready"])
+                    if result.returncode == 0:
+                        pg_isready = True
+                        break
+                except subprocess.CalledProcessError:
+                    _logger.info(
+                        f"PostgreSQL is not ready.. attempt {i}. Retrying in {i} seconds..."
+                    )
+                    time.sleep(i)
+                except Exception:
+                    raise
 
-        if not pg_isready:
-            _logger.critical("Could not contact PostgreSQL")
-            sys.exit(1)
+            if not pg_isready:
+                _logger.critical("Could not contact PostgreSQL")
+                sys.exit(1)
 
-        # Run pg_restore
-        _logger.info(f"Restoring database dump to {target_database}...")
-        pg_restore_cmd = [
-            "pg_restore",
-            f"--dbname={target_database}",
-            "--verbose",
-            "--no-owner",
-        ]
-        if args.pg_restore_args:
-            pg_restore_cmd.extend(shlex.split(args.pg_restore_args))
-        pg_restore_cmd.append(str(dump_file))
-        run_command(pg_restore_cmd)
+            # Run pg_restore
+            _logger.info(f"Restoring database dump to {target_database}...")
+            pg_restore_cmd = [
+                "pg_restore",
+                f"--dbname={target_database}",
+                "--verbose",
+                "--no-owner",
+            ]
+            if args.pg_restore_args:
+                pg_restore_cmd.extend(shlex.split(args.pg_restore_args))
+            pg_restore_cmd.append(str(dump_file))
+            run_command(pg_restore_cmd)
 
-        # Clean up dump files
-        if args.postgres_backup_cleanup:
-            _logger.info(f"Cleaning up dump file {dump_file}")
-            dump_file.unlink(missing_ok=True)
-            checksum_file = Path(f"{dump_file}.sha256")
-            checksum_file.unlink(missing_ok=True)
+            # Clean up dump files
+            if args.postgres_backup_cleanup:
+                _logger.info(f"Cleaning up dump file {dump_file}")
+                dump_file.unlink(missing_ok=True)
+                checksum_file = Path(f"{dump_file}.sha256")
+                checksum_file.unlink(missing_ok=True)
+        else:
+            _logger.info(f"Download-only mode: dump file available at {dump_file}")
     else:
         # Even without postgres restore, we may need source_database for filestore
         source_database = args.source_database
