@@ -4,7 +4,7 @@
 import argparse
 import shlex
 
-from kube import add_common_args, build_pod_spec, dump_manifest
+from .kube import add_common_args, build_pod_spec, dump_manifest
 
 
 def main():

@@ -24,7 +24,7 @@ Not yet implemented.
 
 ### Releasing
 
-- Remember to bump the `versions.yaml` dummy `v` tag
+- Remember to bump the `versions.yaml` dummy `v` tag and the pyproject.toml
 
 ## Building
 

@@ -10,29 +10,29 @@ case "$COMMAND" in
   backup)
     echo "Running backup command..."
     shift  # Remove 'backup' from args and pass through
-    exec python3 /app/backup.py "$@"
+    exec /app/.venv/bin/backup "$@"
     ;;
 
   restore)
     echo "Running restore command..."
     shift  # Remove 'restore' from args and pass through
-    exec python3 /app/restore.py "$@"
+    exec /app/.venv/bin/restore "$@"
     ;;
 
   list)
     echo "Running list command..."
     shift  # Remove 'list' from args and pass through
-    exec python3 /app/list.py "$@"
+    exec /app/.venv/bin/list-snapshots "$@"
     ;;
 
   generate-backup-cronjob)
     shift
-    exec python3 /app/generate_backup_cronjob.py "$@"
+    exec /app/.venv/bin/generate-backup-cronjob "$@"
     ;;
 
   generate-restore-job)
     shift
-    exec python3 /app/generate_restore_job.py "$@"
+    exec /app/.venv/bin/generate-restore-job "$@"
     ;;
 
   shell|sh|bash)

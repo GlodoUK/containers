@@ -21,6 +21,9 @@ ENV KOPIA_CHECK_FOR_UPDATES=false
 # Copy the correct postgresql-client version from pg_builder
 COPY --from=pg_builder /extract/* /
 
+# Copy uv from official image
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
 # Install Python, Kopia, etc.
 RUN apk add --no-cache \
       ca-certificates \
@@ -29,7 +32,6 @@ RUN apk add --no-cache \
       nano \
       tzdata \
       python3 \
-      py3-yaml \
       tar \
     && curl -fsSL "https://github.com/kopia/kopia/releases/download/v${KOPIA_VERSION}/kopia-${KOPIA_VERSION}-linux-x64.tar.gz" \
         | tar xzf - -C /usr/local/bin --strip-components 1 \
@@ -38,18 +40,19 @@ RUN apk add --no-cache \
 # Create app directory
 WORKDIR /app
 
-# Copy scripts
-COPY backup.py /app/backup.py
-COPY restore.py /app/restore.py
-COPY list.py /app/list.py
-COPY kube.py /app/kube.py
-COPY generate_backup_cronjob.py /app/generate_backup_cronjob.py
-COPY generate_restore_job.py /app/generate_restore_job.py
-COPY entrypoint.sh /app/entrypoint.sh
+# Install dependencies (cached layer)
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-editable --no-install-project
 
-# Make scripts executable
-RUN chmod +x /app/entrypoint.sh /app/backup.py /app/restore.py /app/list.py \
-    /app/generate_backup_cronjob.py /app/generate_restore_job.py
+# Install project
+COPY src/ src/
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-editable
+
+# Copy entrypoint
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 # Set entrypoint
 ENTRYPOINT ["/app/entrypoint.sh"]
