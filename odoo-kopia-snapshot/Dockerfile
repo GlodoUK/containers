@@ -40,10 +40,11 @@ WORKDIR /app
 # Copy scripts
 COPY backup.py /app/backup.py
 COPY restore.py /app/restore.py
+COPY list.py /app/list.py
 COPY entrypoint.sh /app/entrypoint.sh
 
 # Make scripts executable
-RUN chmod +x /app/entrypoint.sh /app/backup.py /app/restore.py
+RUN chmod +x /app/entrypoint.sh /app/backup.py /app/restore.py /app/list.py
 
 # Set entrypoint
 ENTRYPOINT ["/app/entrypoint.sh"]

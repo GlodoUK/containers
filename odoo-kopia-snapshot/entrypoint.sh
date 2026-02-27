@@ -15,8 +15,14 @@ case "$COMMAND" in
 
   restore)
     echo "Running restore command..."
-    shift  # Remove 'backup' from args and pass through
+    shift  # Remove 'restore' from args and pass through
     exec python3 /app/restore.py "$@"
+    ;;
+
+  list)
+    echo "Running list command..."
+    shift  # Remove 'list' from args and pass through
+    exec python3 /app/list.py "$@"
     ;;
 
   shell|sh|bash)
@@ -28,6 +34,7 @@ case "$COMMAND" in
     echo "No command specified. Available commands:"
     echo "  backup  - Run backup operation"
     echo "  restore - Run restore operation"
+    echo "  list    - List available snapshots"
     echo "  shell   - Start interactive shell"
     echo ""
     echo "Example: docker run odoo-kopia-backup backup --pghost=db"
