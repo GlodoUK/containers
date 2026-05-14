@@ -1,5 +1,5 @@
 # renovate: datasource=docker depName=alpine versioning=docker
-ARG ALPINE_VERSION=3.22
+ARG ALPINE_VERSION=3.23
 ARG POSTGRES_VERSION=16.9
 
 # builder to pull *just* the client out of the PostgreSQL Docker image
