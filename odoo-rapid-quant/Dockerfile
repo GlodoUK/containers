@@ -1,4 +1,4 @@
-FROM ghcr.io/glodouk/containers/psql:17.8
+FROM ghcr.io/glodouk/containers/psql:17.10
 ARG RQ_VERSION=v0.1.0
 RUN apk add --no-cache curl tar bash file
 WORKDIR /app
