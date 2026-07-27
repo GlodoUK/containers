@@ -8,50 +8,10 @@ import logging
 import sys
 from pathlib import Path
 
+from .utils import setup_logging, run_command, create_sha256_file
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+setup_logging()
 _logger = logging.getLogger(__name__)
-
-
-def create_sha256_file(target_file):
-    checksum_file = f"{target_file}.sha256"
-    try:
-        result = subprocess.run(
-            ["sha256sum", target_file],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            check=True,
-        )
-        with open(checksum_file, "w") as f:
-            f.write(result.stdout)
-    except subprocess.CalledProcessError as e:
-        _logger.critical(f"Error calculating checksum: {e.stderr}")
-    except FileNotFoundError:
-        _logger.critical("The 'sha256sum' command was not found...")
-
-
-def run_command(cmd, check=True, capture_output=False, text=True):
-    """Run a shell command and return the result."""
-    try:
-        result = subprocess.run(
-            cmd, check=check, capture_output=capture_output, text=text
-        )
-        return result.returncode == 0
-    except subprocess.CalledProcessError as e:
-        if check:
-            _logger.error(f"Command failed: {' '.join(cmd)}")
-            _logger.error(f"Error: {e.stderr if capture_output else str(e)}")
-            raise
-        return False
-    except Exception as e:
-        _logger.error(f"An error occurred while running command {' '.join(cmd)}: {e}")
-        # Raising an exception here will stop the loop unless it's handled externally
-        raise
 
 
 def run_postgres_backup(args) -> Path:
@@ -86,8 +46,9 @@ def run_postgres_backup(args) -> Path:
     _logger.info("Checking PostgreSQL is ready...")
     for i in range(1, 10):
         try:
-            pg_isready = run_command(["pg_isready"])
-            if pg_isready:
+            result = run_command(["pg_isready"])
+            if result.returncode == 0:
+                pg_isready = True
                 break
         except subprocess.CalledProcessError:
             _logger.info(
@@ -296,7 +257,7 @@ def main():
         *args.kopia_repo_connect_params.split(),
         *overrides,
     ]
-    if not run_command(connect_cmd, check=False):
+    if run_command(connect_cmd, check=False).returncode != 0:
         _logger.info(
             "Failed to connect to Kopia repository or repository not initialized. Attempting to create..."
         )
