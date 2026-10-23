@@ -1,4 +1,4 @@
-ARG POSTGRES_VERSION=17.10
+ARG POSTGRES_VERSION=17.11
 
 # The official image, unchanged but for pgBackRest: archive_command runs inside the
 # PostgreSQL container, so pgBackRest has to be here. The official image already
