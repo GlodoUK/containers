@@ -37,6 +37,17 @@
       "matchPackageNames": ["debian"],
       "enabled": true,
       "versioning": "debian"
+    },
+    {
+      "description": "pgBackRest follows PostgreSQL's apt repository, so the pinned version can always be installed; db and cron images move together",
+      "matchDatasources": ["deb"],
+      "matchPackageNames": ["pgbackrest"],
+      "registryUrls": [
+        "https://apt.postgresql.org/pub/repos/apt?suite=trixie-pgdg&components=main&binaryArch=amd64"
+      ],
+      "extractVersion": "^(?<version>\\d+\\.\\d+\\.\\d+)-",
+      "versioning": "semver",
+      "groupName": "pgbackrest"
     }
   ]
 }
