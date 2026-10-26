@@ -13,4 +13,4 @@ postgres:
   - "18.4"
 pgbackrest:
   # renovate: datasource=deb depName=pgbackrest
-  - "2.59.3"
+  - "2.60.0"
