@@ -8,7 +8,9 @@ ARG PGBACKREST_VERSION=2.59.3
 
 RUN set -eux; \
   apt-get update; \
-  apt-get install -y --no-install-recommends "pgbackrest=${PGBACKREST_VERSION}-*"; \
+  apt-get install -y --no-install-recommends \
+    ca-certificates \
+    "pgbackrest=${PGBACKREST_VERSION}-*"; \
   rm -rf /var/lib/apt/lists/*; \
   pgbackrest version | grep -qx "pgBackRest ${PGBACKREST_VERSION}"
 
